@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aria Technologies — Assembly Planner</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f0f3f8;color:#1a1a2e;font-size:13px}
+.page{max-width:1600px;margin:0 auto;padding:20px}
+
+/* ── HEADER ── */
+.header{background:#0d1b4b;color:#fff;padding:16px 24px;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.hl .company{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#8fa8d0;margin-bottom:3px}
+.hl .main-title{font-size:19px;font-weight:700;color:#fff}
+.hbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;font-size:12px;font-weight:600;border:none;border-radius:7px;cursor:pointer}
+.btn-print{background:#378ADD;color:#fff}.btn-print:hover{background:#185FA5}
+
+/* ── CONTROLS ── */
+.controls{background:#fff;border-radius:10px;padding:12px 18px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.lbl{font-size:12px;color:#64748b;font-weight:500;white-space:nowrap}
+.proj-input{font-size:13px;font-weight:600;padding:5px 11px;border-radius:7px;border:1px solid #cbd5e1;background:#f8fafc;color:#1a1a2e;width:260px}
+.proj-input:focus{outline:none;border-color:#378ADD;background:#fff}
+input[type=date]{font-size:12px;padding:5px 9px;border-radius:7px;border:1px solid #cbd5e1;background:#f8fafc;color:#1a1a2e}
+input[type=date]:focus{outline:none;border-color:#378ADD}
+.btn-add-ms{padding:5px 13px;font-size:12px;font-weight:600;border:1px solid #0d1b4b;border-radius:7px;background:#fff;color:#0d1b4b;cursor:pointer}
+.btn-add-ms:hover{background:#e8ecf5}
+.btn-add-task{padding:5px 13px;font-size:12px;font-weight:600;border:1px solid #378ADD;border-radius:7px;background:#fff;color:#185FA5;cursor:pointer}
+.btn-add-task:hover{background:#E6F1FB}
+
+/* ── SUMMARY CARDS ── */
+.scards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.sc{background:#fff;border-radius:10px;padding:11px 15px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.sc .sl{font-size:11px;color:#64748b;margin-bottom:3px;font-weight:500}
+.sc .sv{font-size:19px;font-weight:700;color:#0d1b4b}
+
+/* ── SECTION LABEL ── */
+.sec{font-size:11px;font-weight:700;color:#64748b;letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px;padding-left:2px}
+
+/* ── TABLE ── */
+.tbl-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:auto;max-height:480px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{background:#0d1b4b;font-weight:700;font-size:11px;color:#c8d8f0;text-align:center;padding:8px 7px;border-bottom:2px solid #1a3060;position:sticky;top:0;z-index:2;white-space:nowrap;overflow:hidden}
+th.left{text-align:left}
+td{padding:5px 7px;border-bottom:1px solid #f0f3f8;vertical-align:middle;overflow:hidden}
+tr:last-child td{border-bottom:none}
+tr.milestone-row td{background:#eef2fa;font-weight:700}
+tr.milestone-row:hover td{background:#e3eaf8}
+tr.task-row:hover td{background:#f8fafc}
+
+/* editable inputs */
+.ei{border:1px solid #e2e8f0;border-radius:5px;padding:3px 5px;font-size:11px;background:#fff;color:#1a1a2e;width:100%;font-family:inherit}
+.ei:focus{outline:none;border-color:#378ADD;background:#f0f7ff}
+.ei-mono{font-family:Courier New,monospace;font-size:10px}
+.ei-c{text-align:center}
+select.ei{padding:3px 4px;cursor:pointer}
+
+/* badges */
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:700;white-space:nowrap}
+.b-ns{background:#dbeafe;color:#1e40af}
+.b-ip{background:#fef3c7;color:#92400e}
+.b-dn{background:#dcfce7;color:#166534}
+.b-nd{background:#f1f5f9;color:#64748b}
+.b-ms{background:#0d1b4b;color:#fff}
+.b-task{background:#e0e7ef;color:#334155}
+
+/* milestone label in table */
+.ms-label{display:flex;align-items:center;gap:6px}
+.ms-diamond{width:10px;height:10px;background:#0d1b4b;transform:rotate(45deg);flex-shrink:0}
+.task-indent{padding-left:20px}
+
+/* % done bar */
+.pct-wrap{display:flex;align-items:center;gap:5px}
+.pct-bar-bg{flex:1;height:6px;background:#e2e8f0;border-radius:3px;min-width:40px}
+.pct-bar-fill{height:6px;border-radius:3px;background:#378ADD;transition:width .2s}
+.pct-num{font-size:10px;font-weight:700;color:#475569;min-width:26px;text-align:right}
+
+.del-btn{background:transparent;border:none;cursor:pointer;color:#94a3b8;font-size:15px;padding:1px 5px;border-radius:4px}
+.del-btn:hover{color:#dc2626;background:#fee2e2}
+
+/* ── GANTT ── */
+.gantt-section{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:16px}
+.gantt-scroll{overflow-x:auto}
+.gh-row{display:flex;background:#0d1b4b;border-bottom:2px solid #1a3060}
+.gh-lbl{width:240px;min-width:240px;padding:6px 10px;font-size:10px;font-weight:700;color:#c8d8f0;border-right:1px solid #1a3060;flex-shrink:0}
+.gh-month{display:flex;background:#132254;border-bottom:1px solid #1a3060}
+.gh-month-cell{font-size:9px;font-weight:700;color:#8fa8d0;text-align:center;padding:3px 0;border-right:1px solid #1a3060;flex-shrink:0;overflow:hidden}
+.gh-month-lbl{width:240px;min-width:240px;padding:3px 10px;font-size:9px;font-weight:700;color:#8fa8d0;border-right:1px solid #1a3060;flex-shrink:0}
+.gh-day{width:22px;min-width:22px;font-size:8px;color:#8fa8d0;text-align:center;padding:4px 0;border-right:1px solid #1a3060;flex-shrink:0;overflow:hidden;line-height:1.2}
+.gh-day.we{color:#f87171;background:#1a0f0f}
+.gr-row{display:flex;border-bottom:1px solid #f0f3f8}
+.gr-row:last-child{border-bottom:none}
+.gr-row.gr-ms{background:#eef2fa}
+.gr-lbl{width:240px;min-width:240px;padding:5px 10px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid #e2e8f0;flex-shrink:0;color:#475569}
+.gr-lbl.lbl-ms{font-weight:700;color:#0d1b4b}
+.gc{width:22px;min-width:22px;height:26px;border-right:1px solid #f5f7fa;flex-shrink:0}
+.gc.we{background:#fff5f5}
+/* task bars */
+.gc.bar{background:#378ADD}
+.gc.bar-s{background:#378ADD;border-radius:5px 0 0 5px}
+.gc.bar-e{background:#378ADD;border-radius:0 5px 5px 0}
+.gc.bar-se{background:#378ADD;border-radius:5px}
+/* done bars */
+.gc.done{background:#22c55e}
+.gc.done-s{background:#22c55e;border-radius:5px 0 0 5px}
+.gc.done-e{background:#22c55e;border-radius:0 5px 5px 0}
+.gc.done-se{background:#22c55e;border-radius:5px}
+/* milestone diamond overlay */
+.gc.ms-pt{position:relative}
+.gc.ms-pt::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(45deg);width:10px;height:10px;background:#0d1b4b;border:2px solid #fff}
+/* today line */
+.gc.today-col{border-right:2px solid #f59e0b}
+
+.legend{display:flex;gap:16px;align-items:center;padding:8px 12px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:10px;color:#64748b;flex-wrap:wrap}
+.leg-item{display:flex;align-items:center;gap:5px}
+.leg-dot{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+
+/* ── PRINT ── */
+@media print{
+  body{background:#fff!important;font-size:10px}
+  .page{padding:6px;max-width:none}
+  .no-print{display:none!important}
+  .header{background:#0d1b4b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;padding:10px 14px;margin-bottom:8px;border-radius:6px}
+  .controls{padding:6px 10px;margin-bottom:7px;box-shadow:none}
+  .proj-input,.btn-add-ms,.btn-add-task{display:none!important}
+  .tbl-wrap{max-height:none!important;overflow:visible!important;box-shadow:none;margin-bottom:10px;border:1.5px solid #cbd5e1}
+  table{font-size:8px!important}
+  th{padding:4px 5px!important;font-size:8px!important}
+  td{padding:3px 5px!important}
+  .ei{border:none!important;background:transparent!important;font-size:8px!important;padding:0!important;pointer-events:none}
+  select.ei{-webkit-appearance:none;appearance:none;border:none!important;background:transparent!important}
+  .del-btn{display:none!important}
+  .gantt-section{box-shadow:none;border:1.5px solid #cbd5e1;page-break-before:always}
+  .gantt-scroll{overflow:visible!important}
+  .gh-row{background:#0d1b4b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gh-month{background:#132254!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gh-lbl,.gr-lbl{width:180px!important;min-width:180px!important;font-size:8px!important}
+  .gh-month-lbl{width:180px!important;min-width:180px!important}
+  .gh-day,.gc{width:14px!important;min-width:14px!important}
+  .gh-day{font-size:6px!important;padding:2px 0!important}
+  .gc{height:18px!important}
+  .gr-row,.gh-row,.gh-month{display:flex!important}
+  .gc.bar,.gc.bar-s,.gc.bar-e,.gc.bar-se{background:#378ADD!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gc.done,.gc.done-s,.gc.done-e,.gc.done-se{background:#22c55e!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gc.we,.gh-day.we{background:#fff5f5!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gr-row.gr-ms{background:#eef2fa!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .pct-bar-fill{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- HEADER -->
+<div class="header">
+  <div class="hl">
+    <div class="company">Aria Technologies</div>
+    <div class="main-title" id="headerTitle">Assembly Production Schedule</div>
+  </div>
+  <button class="hbtn btn-print no-print" onclick="window.print()">Print / Export PDF</button>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <span class="lbl">Project</span>
+  <input class="proj-input" id="projName" placeholder="Project name..." value="LR340 Linear Robot Assembly">
+  <span class="lbl" style="margin-left:8px">Start date</span>
+  <input type="date" id="startDate">
+  <button class="btn-add-ms no-print" onclick="addMilestone()" style="margin-left:8px">+ Milestone</button>
+  <button class="btn-add-task no-print" onclick="addTask()">+ Task</button>
+</div>
+
+<!-- SUMMARY CARDS -->
+<div class="scards" id="scards"></div>
+
+<!-- TABLE -->
+<div class="sec">Schedule</div>
+<div class="tbl-wrap">
+<table>
+<colgroup>
+  <col style="width:60px"><!-- ID -->
+  <col style="width:180px"><!-- Task Name -->
+  <col style="width:120px"><!-- Work Order -->
+  <col style="width:64px"><!-- Type -->
+  <col style="width:54px"><!-- Hrs -->
+  <col style="width:86px"><!-- Start -->
+  <col style="width:86px"><!-- Finish -->
+  <col style="width:72px"><!-- Predecessor -->
+  <col style="width:100px"><!-- % Done -->
+  <col style="width:82px"><!-- Status -->
+  <col style="width:26px"><!-- del -->
+</colgroup>
+<thead><tr>
+  <th class="left">ID</th>
+  <th class="left">Task name</th>
+  <th class="left">Work order</th>
+  <th>Type</th>
+  <th>Hrs</th>
+  <th>Start</th>
+  <th>Finish</th>
+  <th>Predecessor</th>
+  <th>% Done</th>
+  <th>Status</th>
+  <th class="no-print"></th>
+</tr></thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<!-- GANTT -->
+<div class="sec">Gantt chart</div>
+<div class="gantt-section">
+  <div class="gantt-scroll"><div id="gantt"></div></div>
+  <div class="legend">
+    <span class="leg-item"><span class="leg-dot" style="background:#378ADD"></span>In progress / scheduled</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#22c55e"></span>Complete (100%)</span>
+    <span class="leg-item"><span style="width:12px;height:12px;background:#0d1b4b;transform:rotate(45deg);display:inline-block;flex-shrink:0"></span>Milestone</span>
+    <span class="leg-item"><span class="leg-dot" style="background:#fff5f5;border:1px solid #fca5a5"></span>Weekend (Fri–Sat)</span>
+    <span class="leg-item"><span style="width:2px;height:12px;background:#f59e0b;display:inline-block"></span>Today</span>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+/* ─────────────────────────────────────────────
+   DATA
+   type: "milestone" | "task"
+   hrs:  duration in working hours (8h = 1 day)
+   pctDone: 0–100
+   status: "Not Started" | "In Progress" | "Complete" | "On Hold"
+   pred: predecessor task ID string (e.g. "R1-X-01"), optional
+───────────────────────────────────────────── */
+let tasks=[
+  {id:"R1-X",   name:"Robot 1 — X-Axis Assembly",          wo:"WO-MAFI-LR340-X0001", type:"milestone", hrs:0,  pctDone:100, status:"Complete",    pred:""},
+  {id:"R1-X-01",name:"Install Linear Rails (X)",            wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X"},
+  {id:"R1-X-02",name:"Install Geared Racks (X)",            wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-01"},
+  {id:"R1-X-03",name:"Install X Guide Wedges",              wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-02"},
+  {id:"R1-X-04",name:"Install X Stoppers",                  wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-03"},
+  {id:"R1-X-05",name:"Install Homing Cam (X)",              wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-04"},
+  {id:"R1-X-06",name:"Install Limit Switch Cam Plates (X)", wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-05"},
+  {id:"R1-X-07",name:"Install Covers & Accessories (X)",    wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-06"},
+  {id:"R1-X-08",name:"Install Logos & Name Plates (X)",     wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-07"},
+  {id:"R1-X-09",name:"Install Rubber Stoppers (X)",         wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-08"},
+  {id:"R1-X-10",name:"Attach X Bearing Unit to Carriage",   wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-09"},
+  {id:"R1-X-11",name:"Attach 340 Carriage & Sensor Mount",  wo:"WO-MAFI-LR340-X0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-X-10"},
+  {id:"R1-Y",   name:"Robot 1 — Y-Axis Assembly",          wo:"WO-MAFI-LR340-Y0001", type:"milestone", hrs:0,  pctDone:100, status:"Complete",    pred:"R1-X-11"},
+  {id:"R1-Y-01",name:"Install Guided Rails (Y)",            wo:"WO-MAFI-LR340-Y0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-Y"},
+  {id:"R1-Y-02",name:"Install Geared Racks (Y)",            wo:"WO-MAFI-LR340-Y0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-Y-01"},
+  {id:"R1-Y-03",name:"Install Y Beam",                      wo:"WO-MAFI-LR340-Y0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-Y-02"},
+  {id:"R1-Y-04",name:"Install Y Stopper",                   wo:"WO-MAFI-LR340-Y0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-Y-03"},
+  {id:"R1-Y-05",name:"Install Homing Cam (Y)",              wo:"WO-MAFI-LR340-Y0001", type:"task",      hrs:8,  pctDone:100, status:"Complete",    pred:"R1-Y-04"},
+  {id:"R1-Y-06",name:"Install Limit Switch Plates & Sensors (Y)", wo:"WO-MAFI-LR340-Y0001", type:"task", hrs:8, pctDone:100, status:"Complete",   pred:"R1-Y-05"},
+  {id:"R1-Y-07",name:"Install Pinions, Motors & Gearboxes (Y)",   wo:"WO-MAFI-LR340-Y0001", type:"task", hrs:8, pctDone:100, status:"Complete",   pred:"R1-Y-06"},
+  {id:"R1-Y-08",name:"Install Covers & Cable Accessories (Y)",    wo:"WO-MAFI-LR340-Y0001", type:"task", hrs:8, pctDone:100, status:"Complete",   pred:"R1-Y-07"},
+  {id:"R1-Y-09",name:"Install Y Name Plates",               wo:"WO-MAFI-LR340-Y0001", type:"task",      hrs:8,  pctDone:0,   status:"Not Started", pred:"R1-Y-08"},
+  {id:"R1-C",   name:"Robot 1 — C-Axis Assembly",          wo:"WO-MAFI-LR340-C0001", type:"milestone", hrs:0,  pctDone:0,   status:"Not Started", pred:"R1-Y-09"},
+  {id:"R1-C-01",name:"Install C-Axis Gearbox",              wo:"WO-MAFI-LR340-C0001", type:"task",      hrs:8,  pctDone:0,   status:"Not Started", pred:"R1-C"},
+  {id:"R1-C-02",name:"Install C-Axis Motor & Mount",        wo:"WO-MAFI-LR340-C0001", type:"task",      hrs:8,  pctDone:0,   status:"Not Started", pred:"R1-C-01"},
+  {id:"R1-C-03",name:"Install Rotation Shafts",             wo:"WO-MAFI-LR340-C0001", type:"task",      hrs:8,  pctDone:0,   status:"Not Started", pred:"R1-C-02"},
+  {id:"R1-C-04",name:"Install Cross Bearing",               wo:"WO-MAFI-LR340-C0001", type:"task",      hrs:8,  pctDone:0,   status:"Not Started", pred:"R1-C-03"},
+  {id:"R1-C-05",name:"Install Fixation Arms",               wo:"WO-MAFI-LR340-C0001", type:"task",      hrs:8,  pctDone:0,   status:"Not Started", pred:"R1-C-04"},
+  {id:"R1-C-06",name:"Final Inspection & QC",               wo:"WO-MAFI-LR340-C0001", type:"task",      hrs:8,  pctDone:0,   status:"Not Started", pred:"R1-C-05"},
+];
+let nid=100;
+
+/* ─────────────────────────────────────────────
+   DATE HELPERS  (Fri=5, Sat=6 are weekends)
+───────────────────────────────────────────── */
+function isWE(d){const w=d.getDay();return w===5||w===6;}
+function cloneDay(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+function skipWE(d){const r=cloneDay(d);while(isWE(r))r.setDate(r.getDate()+1);return r;}
+function countWD(a,b){
+  let c=0,d=cloneDay(a);const e=cloneDay(b);
+  while(d<=e){if(!isWE(d))c++;d.setDate(d.getDate()+1);}
+  return c;
+}
+function fmtD(d){if(!d)return"—";return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"});}
+function fmtShort(d){if(!d)return"";return d.toLocaleDateString("en-GB",{day:"2-digit",month:"short"});}
+function today(){return cloneDay(new Date());}
+
+function getBase(){
+  const v=document.getElementById("startDate").value;
+  if(!v)return null;
+  const[y,m,day]=v.split("-").map(Number);
+  return new Date(y,m-1,day);
+}
+
+function computeSched(){
+  const base=getBase();
+  if(!base)return tasks.map(t=>({...t,start:null,end:null,wdays:0}));
+
+  const map={};
+  const hrsMap={};
+  let curDay=skipWE(cloneDay(base));
+  let hoursLeft=8;
+
+  const result=tasks.map(t=>{
+
+    if(t.type==="milestone"){
+      if(t.pred && map[t.pred]){
+        const pr=map[t.pred];
+        const predDay=cloneDay(pr.end);
+        const hl=hrsMap[t.pred]||0;
+        if(hl<=0){
+          const next=cloneDay(predDay);
+          next.setDate(next.getDate()+1);
+          while(isWE(next))next.setDate(next.getDate()+1);
+          curDay=next;
+        } else {
+          const next=cloneDay(predDay);
+          next.setDate(next.getDate()+1);
+          while(isWE(next))next.setDate(next.getDate()+1);
+          curDay=next;
+        }
+        hoursLeft=8;
+      } else if(hoursLeft<=0){
+        curDay.setDate(curDay.getDate()+1);
+        while(isWE(curDay))curDay.setDate(curDay.getDate()+1);
+        hoursLeft=8;
+      }
+      const day=cloneDay(curDay);
+      const rec={...t,start:day,end:day,wdays:1};
+      map[t.id]=rec; hrsMap[t.id]=hoursLeft;
+      return rec;
+
+    } else {
+      if(t.pred && map[t.pred]){
+        const pr=map[t.pred];
+        const predDay=cloneDay(pr.end);
+        const hl=hrsMap[t.pred]||0;
+
+        if(pr.type==="milestone"){
+          if(predDay.getTime()>=curDay.getTime()){
+            curDay=cloneDay(predDay);
+            hoursLeft=8;
+          }
+        } else {
+          if(predDay.getTime()>curDay.getTime()){
+            curDay=cloneDay(predDay);
+            hoursLeft=hl>0?hl:8;
+          } else if(predDay.getTime()===curDay.getTime()){
+            hoursLeft=hl>0?hl:hoursLeft;
+          }
+          if(hoursLeft<=0){
+            curDay.setDate(curDay.getDate()+1);
+            while(isWE(curDay))curDay.setDate(curDay.getDate()+1);
+            hoursLeft=8;
+          }
+        }
+      } else if(hoursLeft<=0){
+        curDay.setDate(curDay.getDate()+1);
+        while(isWE(curDay))curDay.setDate(curDay.getDate()+1);
+        hoursLeft=8;
+      }
+
+      const startDay=cloneDay(curDay);
+      let rem=Math.max(t.hrs,0.0001);
+      while(rem>0){
+        const consume=Math.min(rem,hoursLeft);
+        rem-=consume; hoursLeft-=consume;
+        if(rem>0){
+          curDay.setDate(curDay.getDate()+1);
+          while(isWE(curDay))curDay.setDate(curDay.getDate()+1);
+          hoursLeft=8;
+        }
+      }
+      const endDay=cloneDay(curDay);
+      const wdays=countWD(startDay,endDay);
+      const rec={...t,start:startDay,end:endDay,wdays};
+      map[t.id]=rec; hrsMap[t.id]=hoursLeft;
+      return rec;
+    }
+  });
+
+  const msIndices=[];
+  result.forEach((t,i)=>{if(t.type==="milestone")msIndices.push(i);});
+
+  msIndices.forEach((mi,rank)=>{
+    const nextMi=msIndices[rank+1]!==undefined?msIndices[rank+1]:result.length;
+    const children=result.slice(mi+1,nextMi).filter(t=>t.type==="task"&&t.start&&t.end);
+    if(!children.length)return;
+    const earliest=new Date(Math.min(...children.map(c=>c.start.getTime())));
+    const latest=new Date(Math.max(...children.map(c=>c.end.getTime())));
+    result[mi].start=cloneDay(earliest);
+    result[mi].end=cloneDay(latest);
+    result[mi].wdays=countWD(earliest,latest);
+    map[result[mi].id]=result[mi];
+  });
+
+  return result;
+}
+
+/* ─────────────────────────────────────────────
+   STATUS / BADGE helpers
+───────────────────────────────────────────── */
+function autoStatus(t,s,e){
+  // don't override manually set statuses
+  if(t.status==="On Hold")return"On Hold";
+  if(t.pctDone===100)return"Complete";
+  if(!s||!e)return t.status||"Not Started";
+  const td=today();
+  if(t.pctDone>0&&t.pctDone<100)return"In Progress";
+  if(td>=s&&td<=e)return"In Progress";
+  if(td>e)return"Complete";
+  return"Not Started";
+}
+
+function statusBadge(st){
+  const m={
+    "Complete":   "badge b-dn",
+    "In Progress":"badge b-ip",
+    "Not Started":"badge b-ns",
+    "On Hold":    "badge b-nd",
+  };
+  return`<span class="${m[st]||"badge b-nd"}">${st}</span>`;
+}
+
+function typeBadge(type){
+  if(type==="milestone")return`<span class="badge b-ms">Milestone</span>`;
+  return`<span class="badge b-task">Task</span>`;
+}
+
+function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");}
+
+/* ─────────────────────────────────────────────
+   MUTATIONS
+───────────────────────────────────────────── */
+function upd(id,f,v){
+  tasks=tasks.map(t=>{
+    if(t.id!==id)return t;
+    let val=v;
+    if(f==="hrs"||f==="pctDone")val=+v;
+    if(f==="pctDone"){val=Math.min(100,Math.max(0,val));}
+    return{...t,[f]:val};
+  });
+  render();
+}
+
+function delTask(id){tasks=tasks.filter(t=>t.id!==id);render();}
+
+function addMilestone(){
+  const newId="MS-"+nid++;
+  tasks.push({id:newId,name:"New Milestone",wo:"",type:"milestone",hrs:0,pctDone:0,status:"Not Started",pred:""});
+  render();
+}
+function addTask(){
+  const newId="T-"+nid++;
+  tasks.push({id:newId,name:"New Task",wo:"",type:"task",hrs:8,pctDone:0,status:"Not Started",pred:""});
+  render();
+}
+
+/* ─────────────────────────────────────────────
+   RENDER
+───────────────────────────────────────────── */
+function render(){
+  const sched=computeSched();
+  renderSummary(sched);
+  renderTable(sched);
+  renderGantt(sched);
+  const proj=document.getElementById("projName").value||"Assembly Production Schedule";
+  document.getElementById("headerTitle").textContent=proj;
+}
+
+function renderSummary(sched){
+  const base=getBase();
+  const totTasks=tasks.filter(t=>t.type==="task").length;
+  const totMs=tasks.filter(t=>t.type==="milestone").length;
+  const totHrs=tasks.reduce((a,t)=>a+t.hrs,0);
+  const done=tasks.filter(t=>t.pctDone===100).length;
+  const ends=sched.filter(x=>x.end).map(x=>x.end.getTime());
+  const pEnd=ends.length?new Date(Math.max(...ends)):null;
+  const wd=base&&pEnd?countWD(base,pEnd):0;
+  const pct=tasks.length?Math.round(tasks.reduce((a,t)=>a+t.pctDone,0)/tasks.length):0;
+  document.getElementById("scards").innerHTML=`
+    <div class="sc"><div class="sl">Tasks</div><div class="sv">${totTasks}</div></div>
+    <div class="sc"><div class="sl">Milestones</div><div class="sv">${totMs}</div></div>
+    <div class="sc"><div class="sl">Total hours</div><div class="sv">${totHrs.toFixed(0)}</div></div>
+    <div class="sc"><div class="sl">Working days</div><div class="sv">${wd||"—"}</div></div>
+    <div class="sc"><div class="sl">Overall % done</div><div class="sv">${pct}%</div></div>
+    <div class="sc"><div class="sl">Project end</div><div class="sv" style="font-size:12px">${fmtD(pEnd)||"—"}</div></div>
+  `;
+}
+
+function renderTable(sched){
+  const tb=document.getElementById("tbody");
+  if(!tasks.length){
+    tb.innerHTML=`<tr><td colspan="11" style="text-align:center;padding:2rem;color:#94a3b8">No tasks yet</td></tr>`;
+    return;
+  }
+  tb.innerHTML=sched.map(t=>{
+    const isMil=t.type==="milestone";
+    const rowCls=isMil?"milestone-row":"task-row";
+    const st=autoStatus(t,t.start,t.end);
+    const pctFill=Math.min(100,Math.max(0,t.pctDone));
+    const barColor=t.pctDone===100?"#22c55e":"#378ADD";
+    const nameIndent=isMil?"":"task-indent";
+
+    // type dropdown
+    const typeOpts=["task","milestone"].map(v=>`<option value="${v}"${t.type===v?" selected":""}>${v.charAt(0).toUpperCase()+v.slice(1)}</option>`).join("");
+    // status dropdown
+    const stOpts=["Not Started","In Progress","Complete","On Hold"].map(v=>`<option value="${v}"${t.status===v?" selected":""}>${v}</option>`).join("");
+
+    return`<tr class="${rowCls}">
+      <td><input class="ei ei-mono" value="${esc(t.id)}" onchange="updId('${t.id}',this.value)" style="font-size:10px;width:56px"></td>
+      <td><input class="ei ${nameIndent}" value="${esc(t.name)}" onchange="upd('${t.id}','name',this.value)"></td>
+      <td><input class="ei ei-mono" value="${esc(t.wo)}" onchange="upd('${t.id}','wo',this.value)" style="font-size:10px"></td>
+      <td style="text-align:center"><select class="ei" onchange="upd('${t.id}','type',this.value)">${typeOpts}</select></td>
+      <td><input class="ei ei-c" type="number" min="0" step="0.5" value="${t.hrs}" onchange="upd('${t.id}','hrs',this.value)" ${isMil?'disabled style="background:#f0f0f0"':''}></td>
+      <td style="white-space:nowrap;font-size:10px;color:#475569;text-align:center">${fmtShort(t.start)||"—"}</td>
+      <td style="white-space:nowrap;font-size:10px;color:#475569;text-align:center">${fmtShort(t.end)||"—"}</td>
+      <td><input class="ei ei-mono" value="${esc(t.pred)}" onchange="upd('${t.id}','pred',this.value)" placeholder="e.g. R1-X-01" style="font-size:10px"></td>
+      <td>
+        <div class="pct-wrap">
+          <input class="ei ei-c" type="number" min="0" max="100" value="${t.pctDone}" onchange="upd('${t.id}','pctDone',this.value)" style="width:38px;font-size:10px">
+          <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${pctFill}%;background:${barColor}"></div></div>
+        </div>
+      </td>
+      <td><select class="ei" onchange="upd('${t.id}','status',this.value)">${stOpts}</select></td>
+      <td class="no-print"><button class="del-btn" onclick="delTask('${t.id}')">×</button></td>
+    </tr>`;
+  }).join("");
+}
+
+// Allow editing IDs (rare but useful)
+function updId(oldId, newId){
+  newId=newId.trim();
+  if(!newId||newId===oldId)return;
+  // update pred references
+  tasks=tasks.map(t=>({
+    ...t,
+    id:t.id===oldId?newId:t.id,
+    pred:t.pred===oldId?newId:t.pred
+  }));
+  render();
+}
+
+function renderGantt(sched){
+  const g=document.getElementById("gantt");
+  const base=getBase();
+  const valid=sched.filter(x=>x.start&&x.end);
+  if(!base||!valid.length){
+    g.innerHTML=`<div style="padding:2rem;text-align:center;font-size:12px;color:#94a3b8">Set a start date to see the Gantt chart</div>`;
+    return;
+  }
+  const projEnd=new Date(Math.max(...valid.map(x=>x.end.getTime())));
+  const totalDays=Math.ceil((projEnd.getTime()-base.getTime())/864e5)+5;
+  const tod=today();
+
+  // Build month header spans
+  let months=[];
+  let mCur=null,mCount=0;
+  for(let i=0;i<totalDays;i++){
+    const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()+i);
+    const mk=d.getFullYear()+"-"+d.getMonth();
+    if(mk!==mCur){
+      if(mCur!==null)months.push({label:mCur,count:mCount});
+      mCur=mk;mCount=1;
+    } else mCount++;
+  }
+  if(mCur)months.push({label:mCur,count:mCount});
+
+  let html='<div style="display:inline-block;min-width:max-content">';
+
+  // Month row
+  html+='<div class="gh-month">';
+  html+='<div class="gh-month-lbl">ID — Task</div>';
+  months.forEach(m=>{
+    const[y,mo]=m.label.split("-").map(Number);
+    const lbl=new Date(y,mo,1).toLocaleDateString("en-GB",{month:"short",year:"numeric"});
+    html+=`<div class="gh-month-cell" style="width:${m.count*22}px;min-width:${m.count*22}px">${lbl}</div>`;
+  });
+  html+='</div>';
+
+  // Day header row
+  html+='<div class="gh-row">';
+  html+='<div class="gh-lbl">ID — Task name</div>';
+  for(let i=0;i<totalDays;i++){
+    const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()+i);
+    const we=isWE(d);
+    const isToday=d.getTime()===tod.getTime();
+    html+=`<div class="gh-day${we?" we":""}${isToday?" today-col":""}">${d.getDate()}</div>`;
+  }
+  html+='</div>';
+
+  // Task rows
+  sched.forEach(t=>{
+    const isMil=t.type==="milestone";
+    const st=autoStatus(t,t.start,t.end);
+    const isDone=st==="Complete"||t.pctDone===100;
+    const rowCls=isMil?"gr-row gr-ms":"gr-row";
+    const lblCls=isMil?"gr-lbl lbl-ms":"gr-lbl";
+
+    html+=`<div class="${rowCls}">`;
+    html+=`<div class="${lblCls}" title="${esc(t.id)} — ${esc(t.name)}">${esc(t.id)} — ${esc(t.name)}</div>`;
+
+    for(let i=0;i<totalDays;i++){
+      const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()+i);
+      const we=isWE(d);
+      const isToday=d.getTime()===tod.getTime();
+      let cls="gc";
+      if(we)cls+=" we";
+      if(isToday)cls+=" today-col";
+
+      if(isMil){
+        // draw diamond on the start/end day
+        if(t.start&&d.getTime()===t.start.getTime())cls+=" ms-pt";
+      } else if(t.start&&t.end&&!we){
+        const dT=d.getTime(),sT=t.start.getTime(),eT=t.end.getTime();
+        if(dT>=sT&&dT<=eT){
+          const prefix=isDone?"done":"bar";
+          const isS=(dT===sT),isE=(dT===eT);
+          if(isS&&isE)cls+=` ${prefix}-se`;
+          else if(isS)cls+=` ${prefix}-s`;
+          else if(isE)cls+=` ${prefix}-e`;
+          else cls+=` ${prefix}`;
+        }
+      }
+      html+=`<div class="${cls}"></div>`;
+    }
+    html+='</div>';
+  });
+
+  html+='</div>';
+  g.innerHTML=html;
+}
+
+/* ─── Init ─── */
+document.getElementById("startDate").addEventListener("change",render);
+document.getElementById("projName").addEventListener("input",render);
+document.getElementById("startDate").value=new Date().toISOString().split("T")[0];
+render();
+</script>
+</body>
+</html>
