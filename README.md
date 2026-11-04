@@ -1,1 +1,1 @@
-# ARIA-Technologies---Assembly-Planner
+# ARIA-Technologies-Assembly-Planner
