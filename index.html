@@ -717,7 +717,7 @@ tr.drop-after td{box-shadow:inset 0 -2px 0 var(--cyan-text);background:var(--cya
     <div class="hdr-actions">
       <span id="userEmailLabel" class="no-print"></span>
       <button class="verify-link no-print" id="verifyLnk" style="display:none" onclick="AUTH.sendVerify()">Verify email</button>
-      <button class="hbtn btn-save no-print saved" id="saveBtn" onclick="AP.retrySave()" title="Changes save automatically"><span class="save-dot"></span><span id="saveBtnText">Saved</span></button>
+      <button class="hbtn btn-save no-print saving" id="saveBtn" onclick="AP.retrySave()" title="Changes save automatically"><span class="save-dot"></span><span id="saveBtnText">Connecting…</span></button>
       <button class="hbtn btn-out no-print" onclick="AUTH.signOut()">Logout</button>
     </div>
   </div>
@@ -846,23 +846,27 @@ tr.drop-after td{box-shadow:inset 0 -2px 0 var(--cyan-text);background:var(--cya
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
 <script>
 /* ─────────────────────────────────────────────
    CONFIGURATION
-   The Assembly Planner shares the Firebase project of the Manufacturing Planner.
-   Its data lives in its own collections (assemblyProjects, assemblyUsers).
+   The Assembly Planner has its own Firebase project (aria-assembly-planner).
+   Its data lives in the collections assemblyProjects and assemblyUsers.
    ALLOW_REGISTRATION=false hides "Create account".
 ───────────────────────────────────────────── */
 const firebaseConfig={
-  apiKey:"AIzaSyAlMxl_yNrCI-oQ6GaTlnBcKLC6nO49Who",
-  authDomain:"manufacturing-planner.firebaseapp.com",
-  projectId:"manufacturing-planner",
-  storageBucket:"manufacturing-planner.firebasestorage.app",
-  messagingSenderId:"128863218484",
-  appId:"1:128863218484:web:044538d18515a09d5c5361"
+  apiKey:"AIzaSyDCDpi8nRkm2qB30nJX9mHOuz1in9T5_lw",
+  authDomain:"aria-assembly-planner.firebaseapp.com",
+  projectId:"aria-assembly-planner",
+  storageBucket:"aria-assembly-planner.firebasestorage.app",
+  messagingSenderId:"266835875059",
+  appId:"1:266835875059:web:85cbd85b1dba0d07a2d386",
+  measurementId:"G-YE8138J21F"
 };
 const ALLOW_REGISTRATION=true;
 firebase.initializeApp(firebaseConfig);
+/* Analytics is optional: an ad blocker or unsupported browser must never stop the planner. */
+try{if(firebase.analytics)firebase.analytics.isSupported().then(ok=>{if(ok)firebase.analytics();}).catch(()=>{});}catch(e){}
 const auth=firebase.auth();
 const db=firebase.firestore();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
@@ -1152,6 +1156,12 @@ function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;"
    MUTATIONS
 ───────────────────────────────────────────── */
 function commit(){recalc();render();SYNC.markDirty();}
+/* No project loaded (for example the cloud refused access): say so instead of failing silently */
+function needProject(){
+  if(P)return true;
+  toast('No project is loaded, so nothing can be opened or saved yet. See the message at the top of the page.','err');
+  return false;
+}
 function findRow(id){return tasks.find(t=>t.id===id);}
 function upd(id,f,v){
   const t=findRow(id);if(!t)return;
@@ -1177,8 +1187,9 @@ function delTask(id){
   }else tasks.splice(tasks.indexOf(t),1);
   commit();
 }
-function addMilestone(){tasks.push(makeRow('milestone'));commit();}
+function addMilestone(){if(!needProject())return;tasks.push(makeRow('milestone'));commit();}
 function addTask(){
+  if(!needProject())return;
   if(!tasks.length||tasks.every(t=>t.type!=='milestone'))tasks.unshift(makeRow('milestone'));
   const last=tasks[tasks.length-1];
   tasks.push(makeRow('task',{axisId:last.type==='task'?last.axisId:''}));
@@ -1632,9 +1643,9 @@ const SYNC=(function(){
   }
   function setState(s,msg){
     const b=$('saveBtn'),t=$('saveBtnText');if(!b)return;
-    const cls={saved:'saved',saving:'saving',unsaved:'unsaved',offline:'errored',error:'errored'}[s];
+    const cls={saved:'saved',saving:'saving',unsaved:'unsaved',offline:'errored',error:'errored',connecting:'saving',denied:'errored'}[s];
     b.className='hbtn btn-save no-print '+cls;
-    t.textContent={saved:'Saved',saving:'Saving…',unsaved:'Unsaved',offline:'Offline, will retry',error:'Save failed, retry'}[s];
+    t.textContent={saved:'Saved',saving:'Saving…',unsaved:'Unsaved',offline:'Offline, will retry',error:'Save failed, retry',connecting:'Connecting…',denied:'Not connected'}[s];
     b.title=msg||(s==='saved'?'All changes are saved to the cloud':'Changes save automatically');
     lastErr=msg||'';
   }
@@ -1810,7 +1821,7 @@ const SYNC=(function(){
     return out;
   }
   function close(){if(unsub){unsub();unsub=null;}clearTimeout(timer);clearTimeout(retry);P=null;tasks=[];synced=null;dirty=false;remoteVersion=0;}
-  return {markDirty,flush,open,close,createProject,listProjects,writeRevision,listRevisions,applyPendingRemote,canon,
+  return {setState,markDirty,flush,open,close,createProject,listProjects,writeRevision,listRevisions,applyPendingRemote,canon,
     get dirty(){return dirty;},get lastErr(){return lastErr;}};
 })();
 
@@ -1946,6 +1957,7 @@ const AP=(function(){
   const defaultAxes=extra=>['X Axis','Y Axis','Z Axis'].concat(extra||[]).map(n=>({id:newId(),name:n}));
   async function boot(){
     banner('');
+    SYNC.setState('connecting');
     try{
       projects=await SYNC.listProjects();
       if(!projects.length){
@@ -1959,7 +1971,8 @@ const AP=(function(){
     }catch(e){
       console.error('Load failed',e);
       const denied=e.code==='permission-denied';
-      banner(`<div class="msg err"><b>${denied?'The cloud database refused access.':'The project could not be loaded.'}</b> ${denied?'The Firestore security rules for the Assembly Planner have not been published yet. Publish the rules file that came with this app in the Firebase console, then reload.':esc(e.message)}<br><button class="rg-btn" onclick="AP.boot()">Try again</button></div>`);
+      SYNC.setState('denied',e.message);
+      banner(`<div class="msg err"><b>${denied?'The cloud database refused access.':'The project could not be loaded.'}</b> ${denied?`This app uses the Firebase project <b>${esc(firebaseConfig.projectId)}</b>. Publish the Assembly Planner rules file in the Rules tab of that exact project, wait a minute, then try again.`:esc(e.message)} Nothing can be saved until this is fixed.<br><button class="rg-btn" onclick="AP.boot()">Try again</button></div>`);
     }
   }
   function fillProjSel(){
@@ -1997,12 +2010,13 @@ const AP=(function(){
         const axes=defaultAxes();
         const id=await SYNC.createProject({name:n,startDate:localISO(),axes,memberEmails:[],settings:{}},[makeRow('milestone')]);
         SYNC.close();projects=await SYNC.listProjects();await openProject(id);closeModal();
-      }catch(e){$('np_err').textContent=e.message;$('np_ok').disabled=false;}
+      }catch(e){$('np_err').textContent=e.code==='permission-denied'?`The cloud database refused this. Publish the Assembly Planner rules in the Firebase project ${firebaseConfig.projectId}.`:e.message;$('np_ok').disabled=false;}
     };
   }
 
   /* ── AXES ── */
   function openAxes(){
+    if(!needProject())return;
     const draw=()=>{
       const m=axisMap();const used={};tasks.forEach(t=>{if(t.axisId)used[t.axisId]=(used[t.axisId]||0)+1;});
       $('axBody').innerHTML=P.axes.length?P.axes.map(a=>`<tr><td class="rg-code">${esc(m[a.id].code)}</td><td><input class="rg-in full" value="${esc(a.name)}" aria-label="Axis name" onchange="AP._axRename('${a.id}',this.value)"></td><td>${used[a.id]||0}</td><td><button class="rg-btn sm danger" onclick="AP._axDel('${a.id}')">Delete</button></td></tr>`).join(''):`<tr><td colspan="4" class="rg-empty">No axes yet</td></tr>`;
@@ -2024,6 +2038,7 @@ const AP=(function(){
 
   /* ── SHARING ── */
   function openShare(){
+    if(!needProject())return;
     const draw=()=>{$('shBody').innerHTML=`<tr><td>${esc(P.ownerEmail||currentUser.email)}</td><td><span class="rg-pill latest">Owner</span></td><td></td></tr>`+P.memberEmails.map(e=>`<tr><td>${esc(e)}</td><td><span class="rg-pill act">Can edit</span></td><td><button class="rg-btn sm danger" onclick="AP._shDel('${esc(e)}')">Remove</button></td></tr>`).join('');};
     showModal(`<h2 class="rg-mh">Share this project</h2>
       <div class="rg-mbody"><p class="rg-dim">People you add can open and edit this project once they have signed in with that email address and verified it.</p></div>
@@ -2049,7 +2064,7 @@ const AP=(function(){
     const s=SYNC.canon(snap);let h=5381;for(let i=0;i<s.length;i++)h=((h*33)^s.charCodeAt(i))>>>0;
     return h.toString(36)+'.'+s.length;
   }
-  const isClean=()=>!!P.currentRev&&hashOf(snapshot())===P.revHash;
+  const isClean=()=>!!P&&!!P.currentRev&&hashOf(snapshot())===P.revHash;
   function revPrefix(name){const s=String(name||'').replace(/[^A-Za-z0-9]/g,'').slice(0,3).toUpperCase();return s.length>=2?s:'PRJ';}
   const iso10=d=>d?localISO(d):'';
   function diffSnaps(a,b){
@@ -2096,6 +2111,7 @@ const AP=(function(){
   const fmtStamp=iso=>{const d=new Date(iso);return isNaN(d)?'':fmtD(d)+' '+p2(d.getHours())+':'+p2(d.getMinutes());};
   let revList=[];
   async function openRevisions(){
+    if(!needProject())return;
     showModal(`<h2 class="rg-mh">Revisions</h2><div class="rg-empty">Loading…</div>`,true);
     try{revList=await SYNC.listRevisions();}catch(e){
       showModal(`<h2 class="rg-mh">Revisions</h2><div class="msg err">${esc(e.message)}</div><div class="rg-mfoot"><button class="rg-btn" onclick="AP.closeModal()">Close</button></div>`);return;
@@ -2254,7 +2270,7 @@ const AP=(function(){
   function toggleExport(e){e.stopPropagation();$('expDD').classList.toggle('open');}
   document.addEventListener('click',e=>{if(!e.target.closest('#expDD'))closeExport();});
   async function exportPlan(){
-    closeExport();if(!needXLSX())return;
+    closeExport();if(!needProject()||!needXLSX())return;
     saveBlob(await exportBlob(),`ARIA_AssemblyPlan_${safeName(P.name)}_${localISO()}.xlsx`);
     toast(`Exported ${tasks.length} rows`,'ok');
   }
@@ -2507,6 +2523,7 @@ const AP=(function(){
     return rows;
   }
   function importStart(){
+    if(!needProject())return;
     if(!needXLSX())return;
     const draw=()=>showModal(`<h2 class="rg-mh">Import from Excel</h2>
       <div class="rg-drop" id="impDrop"><b style="font-size:13px;color:#0d1b4b">Drop an .xlsx or .csv file here</b><span class="rg-dim">or</span><button class="rg-btn pri" onclick="$('impFile').click()">Choose file</button><button class="rg-btn sm" onclick="AP.exportTemplate()">Download import template</button></div>
@@ -2570,6 +2587,7 @@ const AP=(function(){
   /* ── PRINT ── */
   const PR={orient:'landscape',gantt:true};
   function openPrint(){
+    if(!needProject())return;
     const a=document.activeElement;if(a&&a.blur)a.blur();
     drawPrint();$('prPreview').classList.add('open');document.body.style.overflow='hidden';
   }
@@ -2665,7 +2683,7 @@ const AP=(function(){
     openRevisions,_revCreate,_revCompare,_revView,_revRestore,createRevision,diffSnaps,snapshot,isClean,
     toggleExport,exportPlan,exportTemplate,exportBlob,templateBlob,importStart,importFile,_importConfirm,
     openPrint,closePrint,_prPrint,_prSet,preparePrint,
-    retrySave(){SYNC.flush();if(SYNC.lastErr)toast(SYNC.lastErr);}};
+    retrySave(){if(!P){boot();return;}SYNC.flush();if(SYNC.lastErr)toast(SYNC.lastErr);}};
 })();
 
 
